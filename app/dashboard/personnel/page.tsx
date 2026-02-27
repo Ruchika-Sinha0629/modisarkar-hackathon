@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Search, Plus, Edit, Trash2, AlertCircle, X } from "lucide-react"
+import { Search, Plus, Trash2, AlertCircle, X } from "lucide-react"
 import { RANKS } from "@/lib/constants/ranks"
 
 interface Officer {
@@ -46,8 +46,8 @@ export default function PersonnelPage() {
       if (result.success && result.data) {
         setPersonnel(result.data)
       }
-    } catch (err) {
-      console.error('Failed to fetch personnel:', err)
+    } catch {
+      console.error('Failed to fetch personnel')
     } finally {
       setLoading(false)
     }
@@ -73,7 +73,7 @@ export default function PersonnelPage() {
       } else {
         alert(result.error || 'Failed to add officer')
       }
-    } catch (err) {
+    } catch {
       alert('Error adding officer')
     } finally {
       setSubmitting(false)
@@ -90,7 +90,7 @@ export default function PersonnelPage() {
       } else {
         alert(result.error || 'Failed to remove officer')
       }
-    } catch (err) {
+    } catch {
       alert('Error removing officer')
     }
   }

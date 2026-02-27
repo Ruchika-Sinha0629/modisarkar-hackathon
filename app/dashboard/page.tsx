@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import Link from "next/link"
@@ -9,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { Users, MapPin, AlertTriangle, Shield, Clock, TrendingUp, Settings } from "lucide-react"
 import { Zone } from "@/lib/types/dashboard"
-import { SHIFTS } from "@/lib/constants/shifts"
 import dynamic from "next/dynamic"
 
 const ZoneLeafletMap = dynamic(() => import("@/components/dashboard/ZoneLeafletMap"), { ssr: false, loading: () => <div className="h-[350px] flex items-center justify-center bg-gray-100 rounded-lg"><p className="text-gray-500">Loading map...</p></div> })
@@ -28,7 +28,7 @@ function resolveHeatmapColor(zScore: number) {
 export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState("")
   const [zones, setZones] = useState<Zone[]>([])
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [totalForce, setTotalForce] = useState(0)
   const [standbyPct, setStandbyPct] = useState(0.15)
   const [weights, setWeights] = useState({ w_s: 0.3, w_d: 0.7 })

@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
       for (const dep of currentShiftBlock.deployments) {
         const ids = dep.personnelIds || []
         console.log(`  Zone ${dep.zoneId}: personnelIds=${ids.length}, totalStrength=${dep.totalStrength}, required=${dep.requiredStrength}, deficit=${dep.deficit}`)
+        console.log(`  Zone ${dep.zoneId}: personnel=${(dep.personnel || []).length}, totalStrength=${dep.totalStrength}, required=${dep.requiredStrength}`)
       }
       // Reset all field personnel to Standby first
       await PersonnelModel.updateMany(
@@ -119,8 +120,12 @@ export async function POST(req: NextRequest) {
       // Deploy personnel to zones based on roster schedule
       let totalDeployedCount = 0
       for (const dep of currentShiftBlock.deployments) {
-        const rawIds = dep.personnelIds || []
-        const objectIds = rawIds.map((id: string) => new mongoose.Types.ObjectId(id))
+        const rawIds = dep.personnel || []
+        const objectIds = rawIds.map((p) => {
+          const pObj = p as unknown as Record<string, unknown>
+          const id = typeof p === 'string' ? p : (pObj._id ?? pObj.id ?? pObj.officerId)
+          return new mongoose.Types.ObjectId(String(id))
+        })
         const zoneObjectId = new mongoose.Types.ObjectId(dep.zoneId)
 
         console.log(`[DEPLOY] Zone ${dep.zoneId}: deploying ${rawIds.length} officers, setting currentDeployment=${rawIds.length}`)
@@ -145,16 +150,15 @@ export async function POST(req: NextRequest) {
 
     // ── SAVE: Store only summary data in roster document (no personnelIds) ──
     // This keeps the roster document well under MongoDB's 16MB BSON limit
-    const summarySchedule = draft.schedule.map((day: any) => {
-      const shifts: any = {}
-      for (const [shiftName, shiftBlock] of Object.entries(day.shifts) as any[]) {
-        const depsSummary = shiftBlock.deployments.map((dep: any) => ({
+    const summarySchedule = draft.schedule.map((day: { date: Date; dayNumber: number; dayOfWeek: number; shifts: Record<string, { shift: string; startTime: string; endTime: string; standbyCount?: number; deployments: { zoneId: string; totalStrength: number; requiredStrength: number; deficit: number; status: string }[] }> }) => {
+      const shifts: Record<string, unknown> = {}
+      for (const [shiftName, shiftBlock] of Object.entries(day.shifts)) {
+        const depsSummary = shiftBlock.deployments.map(dep => ({
           zoneId: dep.zoneId,
           totalStrength: dep.totalStrength,
           requiredStrength: dep.requiredStrength,
           deficit: dep.deficit,
           status: dep.status,
-          // NO personnelIds — saves ~15MB
         }))
         shifts[shiftName] = {
           shift: shiftBlock.shift,
@@ -162,9 +166,8 @@ export async function POST(req: NextRequest) {
           endTime: shiftBlock.endTime,
           standbyCount: shiftBlock.standbyCount ?? 0,
           deployments: depsSummary,
-          // Shift-level totals for the roster dashboard
-          totalDeployed: depsSummary.reduce((s: number, d: any) => s + (d.totalStrength ?? 0), 0),
-          totalRequired: depsSummary.reduce((s: number, d: any) => s + (d.requiredStrength ?? 0), 0),
+          totalDeployed: depsSummary.reduce((s, d) => s + (d.totalStrength ?? 0), 0),
+          totalRequired: depsSummary.reduce((s, d) => s + (d.requiredStrength ?? 0), 0),
         }
       }
       return {
@@ -172,7 +175,6 @@ export async function POST(req: NextRequest) {
         dayNumber: day.dayNumber,
         dayOfWeek: day.dayOfWeek,
         shifts,
-        // fatigueMatrix omitted — too large (5000 officers × 30 days)
       }
     })
 
@@ -223,11 +225,12 @@ export async function POST(req: NextRequest) {
         totalPersonnel: actualTotalForce,
       },
     }, { status: 201 })
-  } catch (error: any) {
-    console.error('Roster generation error:', error?.message || error)
-    console.error('Stack:', error?.stack)
-    const details = error?.errors ? Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`) : []
-    return NextResponse.json({ success: false, error: error?.message || 'Failed to generate roster', details }, { status: 500 })
+  } catch (error: unknown) {
+    const err = error as Record<string, unknown>
+    console.error('Roster generation error:', err?.message || err)
+    console.error('Stack:', err?.stack)
+    const details = err?.errors ? Object.keys(err.errors as object).map(k => `${k}: ${(err.errors as Record<string, { message: string }>)[k]?.message}`) : []
+    return NextResponse.json({ success: false, error: err?.message || 'Failed to generate roster', details }, { status: 500 })
   }
 }
 
@@ -255,7 +258,7 @@ export async function GET(req: NextRequest) {
       .select('-schedule')
 
     return NextResponse.json({ success: true, data: rosters })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch rosters' }, { status: 500 })
   }
 }

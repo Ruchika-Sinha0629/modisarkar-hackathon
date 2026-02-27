@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, TrendingUp, Users, Zap, CheckCircle } from "lucide-react"
+import { AlertCircle, TrendingUp, Zap, CheckCircle } from "lucide-react"
 import AlertBanner from "@/components/dashboard/AlertBanner"
 
 interface ZoneData {
@@ -71,8 +71,8 @@ export default function IncidentsPage() {
           status: "Normal"
         })))
       }
-    } catch (err) {
-      console.error('Failed to fetch zones:', err)
+    } catch {
+      console.error('Failed to fetch zones')
     } finally {
       setLoading(false)
     }
@@ -120,7 +120,7 @@ export default function IncidentsPage() {
       } else {
         alert(result.error || 'Failed to trigger incident')
       }
-    } catch (err) {
+    } catch {
       alert('Error triggering incident')
     }
   }
