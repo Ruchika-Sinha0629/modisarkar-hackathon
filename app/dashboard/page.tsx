@@ -6,92 +6,109 @@ import ZoneHeatmap from "@/components/dashboard/ZoneHeatmap"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Users, MapPin, AlertTriangle, Shield, Clock, TrendingUp } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Users, MapPin, AlertTriangle, Shield, Clock, TrendingUp, Settings } from "lucide-react"
 import { Zone } from "@/lib/types/dashboard"
 import { SHIFTS } from "@/lib/constants/shifts"
+import dynamic from "next/dynamic"
+
+const ZoneLeafletMap = dynamic(() => import("@/components/dashboard/ZoneLeafletMap"), { ssr: false, loading: () => <div className="h-[350px] flex items-center justify-center bg-gray-100 rounded-lg"><p className="text-gray-500">Loading map...</p></div> })
+
+function calculateZScore(S: number, D: number, w_s = 0.3, w_d = 0.7) {
+  return (w_s * S + w_d * D) / (w_s + w_d)
+}
+function resolveHeatmapColor(zScore: number) {
+  const normalised = ((zScore - 1) / 9) * 10
+  if (normalised >= 7.5) return 'red'
+  if (normalised >= 5.0) return 'orange'
+  if (normalised >= 2.5) return 'yellow'
+  return 'green'
+}
 
 export default function DashboardPage() {
-  const zones: Zone[] = [
-    {
-      _id: "zone-001",
-      name: "North Sector",
-      code: "Z01",
-      sizeScore: 8,
-      densityScore: 9,
-      currentDeployment: 140,
-      safeThreshold: 120,
-      zScore: 2.45,
-      heatmapColor: "red" as const,
-      centroid: { coordinates: [77.24, 28.65] as [number, number] }
-    },
-    {
-      _id: "zone-002",
-      name: "South Sector",
-      code: "Z02",
-      sizeScore: 6,
-      densityScore: 5,
-      currentDeployment: 98,
-      safeThreshold: 100,
-      zScore: -0.15,
-      heatmapColor: "yellow" as const,
-      centroid: { coordinates: [77.25, 28.50] as [number, number] }
-    },
-    {
-      _id: "zone-003",
-      name: "East Zone",
-      code: "Z03",
-      sizeScore: 7,
-      densityScore: 7,
-      currentDeployment: 115,
-      safeThreshold: 110,
-      zScore: 1.82,
-      heatmapColor: "orange" as const,
-      centroid: { coordinates: [77.35, 28.58] as [number, number] }
-    },
-    {
-      _id: "zone-004",
-      name: "West Zone",
-      code: "Z04",
-      sizeScore: 5,
-      densityScore: 3,
-      currentDeployment: 65,
-      safeThreshold: 85,
-      zScore: -2.31,
-      heatmapColor: "green" as const,
-      centroid: { coordinates: [77.10, 28.58] as [number, number] }
-    },
-    {
-      _id: "zone-005",
-      name: "Central District",
-      code: "Z05",
-      sizeScore: 9,
-      densityScore: 10,
-      currentDeployment: 180,
-      safeThreshold: 150,
-      zScore: 3.12,
-      heatmapColor: "red" as const,
-      centroid: { coordinates: [77.22, 28.60] as [number, number] }
-    },
-    {
-      _id: "zone-006",
-      name: "Suburban Ring",
-      code: "Z06",
-      sizeScore: 4,
-      densityScore: 2,
-      currentDeployment: 52,
-      safeThreshold: 80,
-      zScore: -1.95,
-      heatmapColor: "green" as const,
-      centroid: { coordinates: [77.15, 28.48] as [number, number] }
-    }
-  ]
+  const [currentTime, setCurrentTime] = useState("")
+  const [zones, setZones] = useState<Zone[]>([])
+  const [loading, setLoading] = useState(true)
+  const [totalForce, setTotalForce] = useState(0)
+  const [standbyPct, setStandbyPct] = useState(0.15)
+  const [weights, setWeights] = useState({ w_s: 0.3, w_d: 0.7 })
+  const [configVersion, setConfigVersion] = useState(0)
+  const [personnelStats, setPersonnelStats] = useState({ total: 0, deployed: 0, onLeave: 0, standby: 0 })
+  useEffect(() => { setCurrentTime(new Date().toLocaleString()) }, [])
 
-  const totalForce = 1270
+  useEffect(() => {
+    async function fetchZones() {
+      try {
+        const res = await fetch('/api/zones')
+        const result = await res.json()
+        if (result.success && result.data && result.data.length > 0) {
+          setZones(result.data.map((z: any) => ({
+            _id: z._id,
+            name: z.name,
+            code: z.code,
+            sizeScore: z.sizeScore,
+            densityScore: z.densityScore,
+            currentDeployment: z.currentDeployment ?? 0,
+            safeThreshold: z.safeThreshold ?? 0,
+            zScore: z.zScore ?? calculateZScore(z.sizeScore, z.densityScore),
+            heatmapColor: z.heatmapColor ?? resolveHeatmapColor(z.zScore ?? calculateZScore(z.sizeScore, z.densityScore)),
+            centroid: z.centroid ?? { coordinates: [77.22, 28.60] }
+          })))
+        }
+      } catch (err) {
+        console.error('Failed to fetch zones:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchZones()
+
+    // Fetch system config
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/settings')
+        const result = await res.json()
+        if (result.success && result.data) {
+          setTotalForce(result.data.totalForce ?? 0)
+          setStandbyPct(result.data.standbyPercentage ?? 0.15)
+          setWeights(result.data.weights ?? { w_s: 0.3, w_d: 0.7 })
+          setConfigVersion(result.data.version ?? 0)
+        }
+      } catch (err) { console.error('Failed to fetch config:', err) }
+    }
+    fetchConfig()
+
+    // Fetch personnel stats
+    async function fetchPersonnel() {
+      try {
+        const res = await fetch('/api/personnel?limit=500')
+        const result = await res.json()
+        if (result.success && result.data) {
+          const all = result.data
+          setPersonnelStats({
+            total: all.length,
+            deployed: all.filter((p: any) => p.status === 'Deployed').length,
+            onLeave: all.filter((p: any) => p.status === 'OnLeave').length,
+            standby: all.filter((p: any) => p.status === 'Standby').length,
+          })
+        }
+      } catch (err) { console.error('Failed to fetch personnel:', err) }
+    }
+    fetchPersonnel()
+  }, [])
+
   const totalDeployed = zones.reduce((sum, z) => sum + z.currentDeployment, 0)
-  const standbyPoolSize = Math.floor(totalForce * 0.15)
+  const standbyPoolSize = Math.floor(totalForce * standbyPct)
   const availableForReassignment = totalForce - totalDeployed - standbyPoolSize
   const criticalZones = zones.filter(z => z.currentDeployment > z.safeThreshold).length
-  const utilizationRate = ((totalDeployed / totalForce) * 100).toFixed(1)
+  const utilizationRate = totalForce > 0 ? ((totalDeployed / totalForce) * 100).toFixed(1) : '0.0'
+
+  // Determine current shift from clock
+  const currentHour = new Date().getHours()
+  const activeShift = currentHour >= 6 && currentHour < 14 ? 'Morning'
+    : currentHour >= 14 && currentHour < 22 ? 'Evening' : 'Night'
+  const activeShiftTime = activeShift === 'Morning' ? '06:00' : activeShift === 'Evening' ? '14:00' : '22:00'
+  const standbyPctDisplay = Math.round(standbyPct * 100)
 
   return (
     <div className="space-y-6">
@@ -101,9 +118,17 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold text-blue-900">Operation Sentinel</h1>
             <p className="text-sm text-gray-600 mt-1">Police Control Room Command Dashboard</p>
           </div>
-          <div className="text-right text-sm text-gray-500">
-            <p>Generated: {new Date().toLocaleString()}</p>
-            <p className="font-mono">Event: Major Public Event - 30 Day Schedule</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right text-sm text-gray-500">
+              <p>Generated: {currentTime}</p>
+              <p className="font-mono">Event: Major Public Event - 30 Day Schedule</p>
+            </div>
+            <Link href="/dashboard/settings">
+              <Button variant="outline" size="sm" className="border-blue-900 text-blue-900 hover:bg-blue-50">
+                <Settings className="h-4 w-4 mr-1" />
+                Settings
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -134,7 +159,7 @@ export default function DashboardPage() {
         <StatCard
           label="Standby Pool"
           value={standbyPoolSize}
-          subtext="15% Reserve"
+          subtext={`${standbyPctDisplay}% Reserve`}
           icon={<AlertTriangle className="h-5 w-5" />}
           color="amber"
         />
@@ -154,8 +179,8 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Shift Time"
-          value="14:00"
-          subtext="Evening Active"
+          value={activeShiftTime}
+          subtext={`${activeShift} Active`}
           icon={<Clock className="h-5 w-5" />}
           color="purple"
         />
@@ -164,10 +189,13 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 border-l-4 border-l-blue-900">
           <CardHeader className="bg-blue-50 border-b">
-            <CardTitle className="text-blue-900">Strategic Heatmap</CardTitle>
+            <CardTitle className="text-blue-900">Geospatial Zone Map</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <ZoneHeatmap zones={zones} />
+            <ZoneLeafletMap zones={zones} />
+            <div className="mt-4">
+              <ZoneHeatmap zones={zones} />
+            </div>
           </CardContent>
         </Card>
 
@@ -176,15 +204,15 @@ export default function DashboardPage() {
             <CardTitle className="text-green-900 text-base">Operational Status</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-            <StatusRow label="Morning Shift" status="Completed" count={650} />
-            <StatusRow label="Evening Shift" status="Active" count={680} />
-            <StatusRow label="Night Shift" status="Scheduled" count={645} />
+            <StatusRow label="Morning Shift" status={activeShift === 'Morning' ? 'Active' : currentHour >= 14 ? 'Completed' : 'Scheduled'} count={personnelStats.deployed} />
+            <StatusRow label="Evening Shift" status={activeShift === 'Evening' ? 'Active' : currentHour >= 22 || currentHour < 6 ? 'Completed' : 'Scheduled'} count={personnelStats.deployed} />
+            <StatusRow label="Night Shift" status={activeShift === 'Night' ? 'Active' : 'Scheduled'} count={personnelStats.deployed} />
             <div className="border-t pt-4 mt-4">
               <p className="text-xs text-gray-500 font-semibold">ALERT SUMMARY</p>
               <div className="mt-2 space-y-1">
                 <AlertItem label="Critical Zones" value={criticalZones} color="red" />
-                <AlertItem label="Pending Approvals" value={3} color="yellow" />
-                <AlertItem label="Leave Requests" value={7} color="blue" />
+                <AlertItem label="Standby Officers" value={personnelStats.standby} color="yellow" />
+                <AlertItem label="On Leave" value={personnelStats.onLeave} color="blue" />
               </div>
             </div>
           </CardContent>
@@ -231,10 +259,10 @@ export default function DashboardPage() {
           <CardContent className="pt-4 space-y-2 text-sm">
             <InfoRow label="Roster Period" value="30 Days" />
             <InfoRow label="Total Zones" value={zones.length} />
-            <InfoRow label="Weight (Size)" value="0.40" />
-            <InfoRow label="Weight (Density)" value="0.60" />
-            <InfoRow label="DB Version" value="1.0.0" />
-            <InfoRow label="Last Updated" value={new Date().toLocaleDateString()} />
+            <InfoRow label="Weight (Size)" value={weights.w_s.toFixed(2)} />
+            <InfoRow label="Weight (Density)" value={weights.w_d.toFixed(2)} />
+            <InfoRow label="Config Version" value={configVersion} />
+            <InfoRow label="Last Updated" value={currentTime.split(",")[0] || ""} />
           </CardContent>
         </Card>
       </div>

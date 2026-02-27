@@ -1,92 +1,63 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import AlertBanner from "@/components/dashboard/AlertBanner"
 import ZoneCard from "@/components/dashboard/ZoneCard"
 import ZoneHeatmap from "@/components/dashboard/ZoneHeatmap"
-import DeploymentMap from "@/components/dashboard/DeploymentMap"
 import ZoneConfigForm from "@/components/forms/ZoneConfigForm"
 import { Plus, Map, Activity, X } from "lucide-react"
 import { Zone } from "@/lib/types/dashboard"
+import dynamic from "next/dynamic"
+
+const ZoneLeafletMap = dynamic(() => import("@/components/dashboard/ZoneLeafletMap"), { ssr: false, loading: () => <div className="h-[420px] flex items-center justify-center bg-gray-100 rounded-lg"><p className="text-gray-500">Loading map...</p></div> })
 
 export default function ZonesPage() {
-  const [zones, setZones] = useState<Zone[]>([
-    {
-      _id: "zone-001",
-      name: "North Sector",
-      code: "Z01",
-      sizeScore: 8,
-      densityScore: 9,
-      currentDeployment: 140,
-      safeThreshold: 120,
-      zScore: 2.45,
-      heatmapColor: "red" as const,
-      centroid: { coordinates: [77.24, 28.65] }
-    },
-    {
-      _id: "zone-002",
-      name: "South Sector",
-      code: "Z02",
-      sizeScore: 6,
-      densityScore: 5,
-      currentDeployment: 98,
-      safeThreshold: 100,
-      zScore: -0.15,
-      heatmapColor: "yellow" as const,
-      centroid: { coordinates: [77.25, 28.50] }
-    },
-    {
-      _id: "zone-003",
-      name: "East Zone",
-      code: "Z03",
-      sizeScore: 7,
-      densityScore: 7,
-      currentDeployment: 115,
-      safeThreshold: 110,
-      zScore: 1.82,
-      heatmapColor: "orange" as const,
-      centroid: { coordinates: [77.35, 28.58] }
-    },
-    {
-      _id: "zone-004",
-      name: "West Zone",
-      code: "Z04",
-      sizeScore: 5,
-      densityScore: 3,
-      currentDeployment: 65,
-      safeThreshold: 85,
-      zScore: -2.31,
-      heatmapColor: "green" as const,
-      centroid: { coordinates: [77.10, 28.58] }
-    },
-    {
-      _id: "zone-005",
-      name: "Central District",
-      code: "Z05",
-      sizeScore: 9,
-      densityScore: 10,
-      currentDeployment: 180,
-      safeThreshold: 150,
-      zScore: 3.12,
-      heatmapColor: "red" as const,
-      centroid: { coordinates: [77.22, 28.60] }
-    },
-    {
-      _id: "zone-006",
-      name: "Suburban Ring",
-      code: "Z06",
-      sizeScore: 4,
-      densityScore: 2,
-      currentDeployment: 52,
-      safeThreshold: 80,
-      zScore: -1.95,
-      heatmapColor: "green" as const,
-      centroid: { coordinates: [77.15, 28.48] }
+  // Helper for Z-score and color
+  function calculateZScore(S: number, D: number, w_s = 0.3, w_d = 0.7) {
+    return (w_s * S + w_d * D) / (w_s + w_d);
+  }
+  function resolveHeatmapColor(zScore: number) {
+    // 0–10 scale
+    const normalised = ((zScore - 1) / 9) * 10;
+    if (normalised >= 7.5) return 'red';
+    if (normalised >= 5.0) return 'orange';
+    if (normalised >= 2.5) return 'yellow';
+    return 'green';
+  }
+
+  const [zones, setZones] = useState<Zone[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchZones() {
+      try {
+        const res = await fetch('/api/zones')
+        const result = await res.json()
+        if (result.success && result.data && result.data.length > 0) {
+          setZones(result.data.map((z: any) => ({
+            _id: z._id,
+            name: z.name,
+            code: z.code,
+            sizeScore: z.sizeScore,
+            densityScore: z.densityScore,
+            currentDeployment: z.currentDeployment ?? 0,
+            safeThreshold: z.safeThreshold ?? 0,
+            zScore: z.zScore ?? calculateZScore(z.sizeScore, z.densityScore),
+            heatmapColor: z.heatmapColor ?? resolveHeatmapColor(z.zScore ?? calculateZScore(z.sizeScore, z.densityScore)),
+            centroid: z.centroid ?? { coordinates: [77.22, 28.60] }
+          })))
+        }
+      } catch (err) {
+        console.error('Failed to fetch zones:', err)
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+    fetchZones()
+  }, [])
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
@@ -103,7 +74,11 @@ export default function ZonesPage() {
   }
 
   const handleEditZone = (zone: Zone) => {
-    setSelectedZone(zone)
+    setSelectedZone({
+      ...zone,
+      latitude: zone.centroid?.coordinates?.[1] ?? 28.6139,
+      longitude: zone.centroid?.coordinates?.[0] ?? 77.2090,
+    } as any)
     setIsFormOpen(true)
   }
 
@@ -112,29 +87,106 @@ export default function ZonesPage() {
     setSelectedZone(null)
   }
 
-  const handleZoneSubmit = (data: any) => {
+  const handleZoneSubmit = async (data: any) => {
     if (selectedZone) {
-      setZones(zones.map(z => z._id === selectedZone._id ? { ...z, ...data } : z))
-    } else {
-      const newZone: Zone = {
-        _id: `zone-${Date.now()}`,
-        name: data.name,
-        code: data.code,
-        sizeScore: data.sizeScore,
-        densityScore: data.densityScore,
-        currentDeployment: 0,
-        safeThreshold: 100,
-        zScore: 0,
-        heatmapColor: "green" as const,
-        centroid: { coordinates: [77.22, 28.60] }
+      // UPDATE via PATCH API
+      try {
+        const res = await fetch(`/api/zones/${selectedZone._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: data.name,
+            sizeScore: data.sizeScore,
+            densityScore: data.densityScore,
+            isActive: data.isActive,
+            centroid: { type: 'Point', coordinates: [data.longitude, data.latitude] },
+          })
+        });
+        const result = await res.json();
+        if (result.success && result.data) {
+          // Refresh all zones from DB to get recalculated scores
+          const refreshRes = await fetch('/api/zones');
+          const refreshResult = await refreshRes.json();
+          if (refreshResult.success && refreshResult.data) {
+            setZones(refreshResult.data.map((z: any) => ({
+              _id: z._id,
+              name: z.name,
+              code: z.code,
+              sizeScore: z.sizeScore,
+              densityScore: z.densityScore,
+              currentDeployment: z.currentDeployment ?? 0,
+              safeThreshold: z.safeThreshold ?? 0,
+              zScore: z.zScore ?? calculateZScore(z.sizeScore, z.densityScore),
+              heatmapColor: z.heatmapColor ?? resolveHeatmapColor(z.zScore ?? calculateZScore(z.sizeScore, z.densityScore)),
+              centroid: z.centroid ?? { coordinates: [77.22, 28.60] }
+            })));
+          }
+        } else {
+          alert(result.error || 'Failed to update zone');
+        }
+      } catch (err) {
+        alert('Error updating zone');
       }
-      setZones([...zones, newZone])
+    } else {
+      // CREATE via POST API
+      try {
+        const res = await fetch('/api/zones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: data.name,
+            code: data.code.toUpperCase(),
+            sizeScore: data.sizeScore,
+            densityScore: data.densityScore,
+            centroid: { type: 'Point', coordinates: [data.longitude, data.latitude] },
+          })
+        });
+        const result = await res.json();
+        if (result.success && result.data) {
+          // Refresh all zones from DB
+          const refreshRes = await fetch('/api/zones');
+          const refreshResult = await refreshRes.json();
+          if (refreshResult.success && refreshResult.data) {
+            setZones(refreshResult.data.map((z: any) => ({
+              _id: z._id,
+              name: z.name,
+              code: z.code,
+              sizeScore: z.sizeScore,
+              densityScore: z.densityScore,
+              currentDeployment: z.currentDeployment ?? 0,
+              safeThreshold: z.safeThreshold ?? 0,
+              zScore: z.zScore ?? calculateZScore(z.sizeScore, z.densityScore),
+              heatmapColor: z.heatmapColor ?? resolveHeatmapColor(z.zScore ?? calculateZScore(z.sizeScore, z.densityScore)),
+              centroid: z.centroid ?? { coordinates: [77.22, 28.60] }
+            })));
+          }
+        } else {
+          alert(result.error || 'Failed to create zone');
+          return;
+        }
+      } catch (err) {
+        alert('Error creating zone');
+        return;
+      }
     }
-    handleCloseForm()
+    handleCloseForm();
   }
 
-  const handleDeleteZone = (zoneId: string) => {
-    setZones(zones.filter(z => z._id !== zoneId))
+  const handleDeleteZone = async (zoneId: string) => {
+    if (!confirm('Are you sure you want to delete this zone?')) return;
+    try {
+      const res = await fetch(`/api/zones/${zoneId}`, {
+        method: 'DELETE',
+      });
+      const result = await res.json();
+      if (result.success) {
+        setZones(zones.filter(z => z._id !== zoneId));
+      } else {
+        alert(result.error || 'Failed to delete zone');
+      }
+    } catch (err) {
+      alert('Error deleting zone');
+    }
   }
 
   return (
@@ -162,7 +214,7 @@ export default function ZonesPage() {
             </Button>
           </CardHeader>
           <CardContent className="pt-6">
-            <ZoneConfigForm 
+            <ZoneConfigForm
               defaultValues={selectedZone || undefined}
               onSubmit={handleZoneSubmit}
             />
@@ -219,8 +271,8 @@ export default function ZonesPage() {
                   <div key={zone._id} className="relative group">
                     <ZoneCard zone={zone} onClick={() => handleEditZone(zone)} />
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="destructive"
                         onClick={() => handleDeleteZone(zone._id)}
                       >
@@ -240,7 +292,13 @@ export default function ZonesPage() {
               <CardTitle className="text-green-900">Geospatial Deployment Map</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <DeploymentMap zones={zones} />
+              <ZoneLeafletMap
+                zones={zones}
+                onZoneClick={(zoneId) => {
+                  const zone = zones.find(z => z._id === zoneId)
+                  if (zone) handleEditZone(zone)
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

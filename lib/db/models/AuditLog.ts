@@ -39,5 +39,11 @@ const AuditLogSchema = new mongoose.Schema(
 { timestamps: true }
 )
 
+// fixed: added missing indexes
+AuditLogSchema.index({ entityId: 1, createdAt: -1 })
+AuditLogSchema.index({ entityType: 1, action: 1 })
+AuditLogSchema.index({ userId: 1, createdAt: -1 })
+AuditLogSchema.index({ createdAt: -1 })
+
 export default mongoose.models.AuditLog ||
 mongoose.model("AuditLog", AuditLogSchema)

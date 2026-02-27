@@ -29,7 +29,10 @@ const IncidentSchema = new mongoose.Schema(
 
     steps: [
       {
-        step: Number,
+        step: {
+          type: String,
+          enum: ["A", "B", "C"]  // fixed: was Number
+        },
         action: String,
         troopsMoved: Number,
         sourceZones: [mongoose.Schema.Types.ObjectId],
@@ -51,6 +54,9 @@ const IncidentSchema = new mongoose.Schema(
 },
 { timestamps: true }
 )
+
+IncidentSchema.index({ zoneId: 1, triggeredAt: -1 })
+IncidentSchema.index({ "resolution.status": 1 })
 
 export default mongoose.models.Incident ||
 mongoose.model("Incident", IncidentSchema)
