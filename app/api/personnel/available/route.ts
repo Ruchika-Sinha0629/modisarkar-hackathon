@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
         },
       },
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch available personnel' }, { status: 500 })
   }
 }

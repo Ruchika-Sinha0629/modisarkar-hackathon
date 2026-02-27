@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Settings, Save, AlertCircle, RefreshCw } from "lucide-react"
-import { RANKS } from "@/lib/constants/ranks"
 
 const RANK_GROUPS = [
   { label: 'Command Level (not field-deployed)', ranks: ['DGP', 'ADGP', 'IG'] as const },
@@ -71,7 +69,7 @@ export default function SettingsPage() {
           setLastUpdated(new Date(d.updatedAt).toLocaleString())
         }
       }
-    } catch (err) {
+    } catch {
       // No config found — use defaults
     } finally {
       setLoading(false)
@@ -109,7 +107,7 @@ export default function SettingsPage() {
       } else {
         setError(result.error || 'Failed to save config')
       }
-    } catch (err) {
+    } catch {
       setError('Error saving configuration')
     } finally {
       setSaving(false)

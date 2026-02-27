@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db/mongodb'
 import mongoose from 'mongoose'
 import { RANK_TO_LEVEL } from '@/lib/constants/ranks'
@@ -13,7 +13,7 @@ const RANK_COUNTS: Record<string, number> = {
     SI: 300, ASI: 400, HeadConstable: 800, Constable: 3173,
 }
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
     try {
         await connectDB()
         const collection = mongoose.connection.db!.collection('personnels')

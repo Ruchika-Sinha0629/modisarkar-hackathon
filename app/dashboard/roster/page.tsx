@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Download, RefreshCw, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react"
 
 const SHIFT_DISPLAY = [
   { code: 'morning', label: 'Morning Shift', displayTime: '06:00 – 14:00' },
@@ -77,7 +77,7 @@ export default function RosterPage() {
       } else {
         setRoster(null)
       }
-    } catch (err) {
+    } catch {
       setError('Failed to fetch roster')
     } finally {
       setLoading(false)
@@ -101,7 +101,7 @@ export default function RosterPage() {
       } else {
         setError(result.error || 'Failed to generate roster')
       }
-    } catch (err) {
+    } catch {
       setError('Error generating roster')
     } finally {
       setGenerating(false)

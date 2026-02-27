@@ -9,7 +9,7 @@ import AlertBanner from "@/components/dashboard/AlertBanner"
 import ZoneCard from "@/components/dashboard/ZoneCard"
 import ZoneHeatmap from "@/components/dashboard/ZoneHeatmap"
 import ZoneConfigForm from "@/components/forms/ZoneConfigForm"
-import { Plus, Map, Activity, X } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { Zone } from "@/lib/types/dashboard"
 import dynamic from "next/dynamic"
 
@@ -30,7 +30,6 @@ export default function ZonesPage() {
   }
 
   const [zones, setZones] = useState<Zone[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchZones() {
@@ -51,10 +50,8 @@ export default function ZonesPage() {
             centroid: z.centroid ?? { coordinates: [77.22, 28.60] }
           })))
         }
-      } catch (err) {
-        console.error('Failed to fetch zones:', err)
-      } finally {
-        setLoading(false)
+      } catch {
+        console.error('Failed to fetch zones')
       }
     }
     fetchZones()
@@ -125,7 +122,7 @@ export default function ZonesPage() {
         } else {
           alert(result.error || 'Failed to update zone');
         }
-      } catch (err) {
+      } catch {
         alert('Error updating zone');
       }
     } else {
@@ -165,7 +162,7 @@ export default function ZonesPage() {
           alert(result.error || 'Failed to create zone');
           return;
         }
-      } catch (err) {
+      } catch {
         alert('Error creating zone');
         return;
       }
@@ -185,7 +182,7 @@ export default function ZonesPage() {
       } else {
         alert(result.error || 'Failed to delete zone');
       }
-    } catch (err) {
+    } catch {
       alert('Error deleting zone');
     }
   }

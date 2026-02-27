@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { Users, MapPin, AlertTriangle, Shield, Clock, TrendingUp, Settings } from "lucide-react"
 import { Zone } from "@/lib/types/dashboard"
-import { SHIFTS } from "@/lib/constants/shifts"
 import dynamic from "next/dynamic"
 
 const ZoneLeafletMap = dynamic(() => import("@/components/dashboard/ZoneLeafletMap"), { ssr: false, loading: () => <div className="h-[350px] flex items-center justify-center bg-gray-100 rounded-lg"><p className="text-gray-500">Loading map...</p></div> })

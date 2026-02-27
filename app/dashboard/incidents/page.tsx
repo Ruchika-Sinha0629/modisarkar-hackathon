@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, TrendingUp, Users, Zap, CheckCircle } from "lucide-react"
+import { AlertCircle, TrendingUp, Zap, CheckCircle } from "lucide-react"
 import AlertBanner from "@/components/dashboard/AlertBanner"
 
 interface ZoneData {
