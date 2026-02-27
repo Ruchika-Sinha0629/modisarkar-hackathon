@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (currentShiftBlock?.deployments) {
       console.log(`[DEPLOY] Active shift: ${activeShift}, Deployments: ${currentShiftBlock.deployments.length} zones`)
       for (const dep of currentShiftBlock.deployments) {
-        console.log(`  Zone ${dep.zoneId}: personnelIds=${(dep.personnelIds || []).length}, totalStrength=${dep.totalStrength}, required=${dep.requiredStrength}`)
+        console.log(`  Zone ${dep.zoneId}: personnel=${(dep.personnel || []).length}, totalStrength=${dep.totalStrength}, required=${dep.requiredStrength}`)
       }
       // Reset all field personnel to Standby first
       await PersonnelModel.updateMany(
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
 
       // Deploy personnel to zones based on roster schedule
       for (const dep of currentShiftBlock.deployments) {
-        const rawIds = dep.personnelIds || []
-        const objectIds = rawIds.map((id: string) => new mongoose.Types.ObjectId(id))
+        const rawIds = dep.personnel || []
+        const objectIds = rawIds.map((p: any) => new mongoose.Types.ObjectId(typeof p === 'string' ? p : (p._id || p.id).toString()))
         const zoneObjectId = new mongoose.Types.ObjectId(dep.zoneId)
 
         // Update zone's currentDeployment count

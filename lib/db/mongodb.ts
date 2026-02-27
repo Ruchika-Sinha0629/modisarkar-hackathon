@@ -1,9 +1,11 @@
 import mongoose from "mongoose"
 
-const MONGODB_URI = process.env.MONGODB_URI as string
-
-if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI is not defined")
+const getMongoUri = () => {
+  const uri = process.env.MONGODB_URI
+  if (!uri) {
+    throw new Error("MONGODB_URI is not defined")
+  }
+  return uri
 }
 
 let cached = (global as any).mongoose
@@ -19,7 +21,8 @@ async function connectDB() {
   if (cached.conn) return cached.conn
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    const uri = getMongoUri()
+    cached.promise = mongoose.connect(uri, {
       dbName: "operation_sentinel",
       bufferCommands: false
     })
