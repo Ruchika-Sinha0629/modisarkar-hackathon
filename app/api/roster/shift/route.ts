@@ -62,7 +62,6 @@ export async function GET(req: NextRequest) {
 			.lean()
 
 		// Build lookup map: normalised ID string → zone info
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const zoneById = new Map<string, { name: string; code: string; heatmapColor: string }>()
 		for (const z of allZones) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
