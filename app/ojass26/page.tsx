@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronLeft, Zap, Rocket, Terminal, Code, Cpu, Globe, Award, Sparkles } from "lucide-react"
+import { ChevronLeft, Zap, Rocket, Code, Cpu, Globe, Award, Sparkles } from "lucide-react"
 
 export default function OjassEasterEggPage() {
     return (
@@ -41,7 +41,7 @@ export default function OjassEasterEggPage() {
 
                             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 rounded-full backdrop-blur-sm border border-primary/20 shadow-[0_0_50px_rgba(var(--primary),0.3)]">
                                 <span className="font-display text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-warning">
-                                    O'26
+                                    O&apos;26
                                 </span>
                             </div>
                         </div>
@@ -59,7 +59,7 @@ export default function OjassEasterEggPage() {
                             </h1>
 
                             <p className="text-xl md:text-3xl font-medium text-zinc-300 max-w-3xl mx-auto leading-relaxed mt-6">
-                                Eastern India's
+                                Eastern India&apos;s
                                 <span className="mx-2 px-3 py-1 rounded-md bg-white/10 italic text-white shadow-xl border border-white/20">Second Largest</span>
                                 Techno-Management Fest
                             </p>
@@ -94,7 +94,7 @@ export default function OjassEasterEggPage() {
                 <div className="mt-20 text-center flex flex-col items-center justify-center gap-4 animate-fade-in opacity-50">
                     <Award className="w-6 h-6 text-zinc-500" />
                     <p className="font-mono text-xs text-zinc-500 max-w-xl">
-                        This module was built with high-octane caffeine in preparation for Ojass '26. <br />
+                        This module was built with high-octane caffeine in preparation for Ojass &apos;26. <br />
                         See you at NIT Jamshedpur.
                     </p>
                 </div>

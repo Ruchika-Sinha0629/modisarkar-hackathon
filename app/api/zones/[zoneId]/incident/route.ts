@@ -4,7 +4,6 @@ import mongoose from 'mongoose'
 import ZoneModel from '@/lib/db/models/Zone'
 import PersonnelModel from '@/lib/db/models/Personnel'
 import IncidentModel from '@/lib/db/models/Incident'
-import DeploymentModel from '@/lib/db/models/Deployment'
 import SystemConfigModel from '@/lib/db/models/SystemConfig'
 import { recalculateZoneScore, calculateDeficit } from '@/lib/algorithms/proportionalDistributor'
 import { resolveIncident } from '@/lib/algorithms/deficitResolver'
@@ -203,7 +202,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       for (const step of result.steps) {
         if (step.step === 'B') {
           const standbyMoved = result.movedPersonnel
-            .filter(p => !result.steps.some(s => s.step === 'A' && s.sourceZones.length > 0))
+            .filter(() => !result.steps.some(s => s.step === 'A' && s.sourceZones.length > 0))
           if (standbyMoved.length > 0) {
             const standbyIds = standbyMoved.map(p => new mongoose.Types.ObjectId(String(p.officerId)))
             const zoneObjectId = new mongoose.Types.ObjectId(zoneId)
